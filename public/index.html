@@ -30,6 +30,16 @@
       padding: 20px;
       box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,.075);
     }
+    mark {
+      background-color: #ffeb3b;
+      padding: 2px 4px;
+      border-radius: 2px;
+      font-weight: bold;
+    }
+    .table-active {
+      background-color: #cfe2ff !important;
+      border: 2px solid #0d6efd;
+    }
   </style>
 </head>
 <body>
@@ -70,7 +80,6 @@
 
   <div class="container-fluid mt-4">
 
-    <!-- Officers -->
     <div id="officers-section" class="content-section">
       <div class="d-flex justify-content-between align-items-center mb-3">
         <h2><i class="bi bi-people"></i> Офіцери</h2>
@@ -98,20 +107,42 @@
       </div>
     </div>
 
-    <!-- Offenders -->
     <div id="offenders-section" class="content-section d-none">
       <div class="d-flex justify-content-between align-items-center mb-3">
         <h2><i class="bi bi-person-x"></i> Порушники</h2>
-        <div>
-          <input type="text" id="searchOffender" class="form-control d-inline-block me-2" style="width: 300px;" placeholder="Пошук за прізвищем...">
-          <button class="btn btn-info" onclick="searchOffenders()">
-            <i class="bi bi-search"></i> Пошук
-          </button>
-          <button class="btn btn-primary" onclick="openOffenderModal()">
-            <i class="bi bi-plus-circle"></i> Додати порушника
-          </button>
+        <button class="btn btn-primary" onclick="openOffenderModal()">
+          <i class="bi bi-plus-circle"></i> Додати порушника
+        </button>
+      </div>
+      
+      <div class="card mb-3">
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <div class="input-group">
+                <input type="text" class="form-control" id="searchOffender" 
+                       placeholder="Пошук за прізвищем..." 
+                       onkeyup="searchOffenders()">
+                <button class="btn btn-outline-secondary" type="button" 
+                        onclick="navigateSearch(-1)" id="prevSearchBtn" disabled 
+                        title="Попередній результат">
+                  <i class="bi bi-chevron-up"></i>
+                </button>
+                <button class="btn btn-outline-secondary" type="button" 
+                        onclick="navigateSearch(1)" id="nextSearchBtn" disabled 
+                        title="Наступний результат">
+                  <i class="bi bi-chevron-down"></i>
+                </button>
+                <button class="btn btn-outline-secondary" type="button" onclick="resetOffenderSearch()">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+              </div>
+              <small class="text-muted" id="searchCounter"></small>
+            </div>
+          </div>
         </div>
       </div>
+
       <div class="table-container">
         <table class="table table-hover">
           <thead class="table-light">
@@ -130,7 +161,6 @@
       </div>
     </div>
 
-    <!-- Detentions -->
     <div id="detentions-section" class="content-section d-none">
       <div class="d-flex justify-content-between align-items-center mb-3">
         <h2><i class="bi bi-file-earmark-text"></i> Затримання</h2>
@@ -180,7 +210,6 @@
       </div>
     </div>
 
-    <!-- Reports -->
     <div id="reports-section" class="content-section d-none">
       <h2 class="mb-4"><i class="bi bi-file-earmark-bar-graph"></i> Звіти та запити</h2>
 

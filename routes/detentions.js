@@ -31,16 +31,16 @@ router.get('/filter', async (req, res) => {
     }
 
     const result = await db.query(`
-      SELECT 
+    SELECT 
         d.*,
         o.LastName || ' ' || o.FirstName AS OfficerName,
         off.LastName || ' ' || off.FirstName AS OffenderName
-      FROM Detentions d
-      JOIN Officers o ON d.Officer_ID = o.Officer_ID
-      JOIN Offenders off ON d.Offender_ID = off.Offender_ID
-      WHERE d.DetentionDate BETWEEN $1 AND $2
-      ORDER BY d.DetentionDate DESC
-    `, [startDate, endDate]);
+    FROM Detentions d
+    JOIN Officers o ON d.Officer_ID = o.Officer_ID
+    JOIN Offenders off ON d.Offender_ID = off.Offender_ID
+    WHERE d.DetentionDate BETWEEN '${startDate}' AND '${endDate}'
+    ORDER BY d.DetentionDate DESC
+    `);
     
     res.json(result.rows);
   } catch (err) {

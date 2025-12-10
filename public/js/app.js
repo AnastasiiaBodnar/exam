@@ -4,7 +4,9 @@ let officersData = [];
 let offendersData = [];
 let detentionsData = [];
 
-// =============== Navigation ===============
+let searchMatches = [];
+let currentSearchIndex = -1;
+
 function showSection(sectionName) {
   document.querySelectorAll('.content-section').forEach(section => {
     section.classList.add('d-none');
@@ -33,7 +35,6 @@ function showSection(sectionName) {
   }
 }
 
-// =============== Officers ===============
 async function loadOfficers(sortBy = 'LastName', sortOrder = 'ASC') {
   try {
     const response = await fetch(`${API_URL}/officers?sortBy=${sortBy}&sortOrder=${sortOrder}`);
@@ -200,8 +201,14 @@ async function deleteOfficer(officerId) {
   }
 }
 
-// =============== Offenders ===============
 async function loadOffenders() {
+  currentSearchIndex = -1;
+  searchMatches = [];
+  updateSearchCounter(0, 0);
+  document.getElementById('searchOffender').value = '';
+  document.getElementById('prevSearchBtn').disabled = true;
+  document.getElementById('nextSearchBtn').disabled = true;
+
   try {
     const response = await fetch(`${API_URL}/offenders`);
     offendersData = await response.json();
@@ -214,17 +221,36 @@ async function loadOffenders() {
 
 function displayOffenders(offenders) {
   const tbody = document.getElementById('offenders-table');
+  const searchTerm = document.getElementById('searchOffender')?.value.trim().toLowerCase() || '';
+
+  searchMatches = [];
   
   if (offenders.length === 0) {
     tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">Порушників немає</td></tr>';
     return;
   }
   
-  tbody.innerHTML = offenders.map(offender => `
-    <tr>
+  tbody.innerHTML = offenders.map((offender, index) => {
+    const isMatch = searchTerm && (
+        offender.lastname.toLowerCase().includes(searchTerm) || 
+        offender.firstname.toLowerCase().includes(searchTerm)
+    );
+
+    if (isMatch) {
+        searchMatches.push(index);
+    }
+
+    const isCurrentResult = isMatch && currentSearchIndex >= 0 && 
+                           searchMatches[currentSearchIndex] === index;
+    
+    const rowClass = isCurrentResult ? 'table-active' : '';
+    const rowId = isMatch ? `search-match-${searchMatches.length - 1}` : '';
+
+    return `
+    <tr class="${rowClass}" id="${rowId}">
       <td>${offender.offender_id}</td>
-      <td>${offender.lastname}</td>
-      <td>${offender.firstname}</td>
+      <td>${highlightText(offender.lastname, searchTerm)}</td>
+      <td>${highlightText(offender.firstname, searchTerm)}</td>
       <td>${offender.patronymic || '-'}</td>
       <td>${offender.address || '-'}</td>
       <td>${offender.workplace || '-'}</td>
@@ -237,11 +263,15 @@ function displayOffenders(offenders) {
         </button>
       </td>
     </tr>
-  `).join('');
+  `}).join('');
 }
 
 async function searchOffenders() {
   const searchTerm = document.getElementById('searchOffender').value.trim();
+  
+  currentSearchIndex = -1;
+  searchMatches = [];
+  
   if (!searchTerm) {
     loadOffenders();
     return;
@@ -250,12 +280,72 @@ async function searchOffenders() {
   try {
     const response = await fetch(`${API_URL}/offenders/search?lastName=${encodeURIComponent(searchTerm)}`);
     const results = await response.json();
+    
+    offendersData = results;
     displayOffenders(results);
+
+    const total = searchMatches.length;
+    updateSearchCounter(total > 0 ? 1 : 0, total);
+    
+    document.getElementById('prevSearchBtn').disabled = total === 0;
+    document.getElementById('nextSearchBtn').disabled = total === 0;
+
+    if (total > 0) {
+        currentSearchIndex = 0;
+        displayOffenders(results);
+        scrollToSearchResult(0);
+    }
+
   } catch (error) {
     console.error('Error:', error);
-    alert('Помилка пошуку');
   }
 }
+
+function resetOffenderSearch() {
+    loadOffenders();
+}
+
+function highlightText(text, searchTerm) {
+  if (!searchTerm || !text) return text;
+  const regex = new RegExp(`(${searchTerm})`, 'gi');
+  return text.toString().replace(regex, '<mark>$1</mark>');
+}
+
+function navigateSearch(direction) {
+  if (searchMatches.length === 0) return;
+
+  currentSearchIndex += direction;
+
+  if (currentSearchIndex >= searchMatches.length) {
+    currentSearchIndex = 0;
+  } else if (currentSearchIndex < 0) {
+    currentSearchIndex = searchMatches.length - 1;
+  }
+
+  updateSearchCounter(currentSearchIndex + 1, searchMatches.length);
+  
+  displayOffenders(offendersData);
+  scrollToSearchResult(currentSearchIndex);
+}
+
+function scrollToSearchResult(index) {
+  const element = document.getElementById(`search-match-${index}`);
+  if (element) {
+    element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+}
+
+function updateSearchCounter(current, total) {
+  const counter = document.getElementById('searchCounter');
+  if (!counter) return;
+  
+  if (total === 0) {
+    counter.textContent = '';
+  } else {
+    counter.textContent = `Результат ${current} з ${total}`;
+  }
+}
+
 
 function openOffenderModal(offenderId = null) {
   const isEdit = offenderId !== null;
@@ -371,7 +461,6 @@ async function deleteOffender(offenderId) {
   }
 }
 
-// =============== Detentions ===============
 async function loadDetentions() {
   try {
     const response = await fetch(`${API_URL}/detentions`);
@@ -546,7 +635,6 @@ async function deleteDetention(detentionId) {
   }
 }
 
-// =============== Reports ===============
 async function loadReportOfficers() {
   try {
     const response = await fetch(`${API_URL}/officers`);
@@ -648,7 +736,6 @@ async function queryViolationCount() {
   }
 }
 
-// =============== Initial Load ===============
 document.addEventListener('DOMContentLoaded', () => {
   loadOfficers();
 });
