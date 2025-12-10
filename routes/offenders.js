@@ -33,6 +33,32 @@ router.get('/search', async (req, res) => {
   }
 });
 
+router.get('/violations-count/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const offenderResult = await db.query(`
+      SELECT LastName, FirstName FROM Offenders WHERE Offender_ID = ${id}
+    `);
+    
+    if (offenderResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Offender not found' });
+    }
+    
+    const countResult = await db.query(`
+      SELECT COUNT(*) as violations_count FROM Detentions WHERE Offender_ID = ${id}
+    `);
+    
+    res.json({
+      offender: offenderResult.rows[0],
+      violations_count: parseInt(countResult.rows[0].violations_count)
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;

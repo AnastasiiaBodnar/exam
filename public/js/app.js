@@ -179,8 +179,42 @@ async function loadOffenders() {
     const response = await fetch(`${API_URL}/offenders`);
     offendersData = await response.json();
     displayOffenders(offendersData);
+    populateOffenderSelect();
   } catch (error) {
     console.error(error);
+  }
+}
+
+function populateOffenderSelect() {
+  const select = document.getElementById('offenderSelect');
+  select.innerHTML = '<option value="">Оберіть порушника для перегляду кількості порушень...</option>' +
+    offendersData.map(o => `<option value="${o.offender_id}">${o.lastname} ${o.firstname}</option>`).join('');
+}
+
+async function showViolationsCount() {
+  const select = document.getElementById('offenderSelect');
+  const offenderId = select.value;
+  const resultDiv = document.getElementById('violationsResult');
+  
+  if (!offenderId) {
+    resultDiv.innerHTML = '';
+    return;
+  }
+  
+  try {
+    const response = await fetch(`${API_URL}/offenders/violations-count/${offenderId}`);
+    const data = await response.json();
+    
+    resultDiv.innerHTML = `
+      <div class="alert alert-info">
+        <strong>${data.offender.lastname} ${data.offender.firstname}</strong> має 
+        <strong class="text-danger">${data.violations_count}</strong> 
+        ${data.violations_count === 1 ? 'порушення' : 'порушень'}
+      </div>
+    `;
+  } catch (error) {
+    console.error(error);
+    resultDiv.innerHTML = '<div class="alert alert-danger">Помилка завантаження даних</div>';
   }
 }
 
