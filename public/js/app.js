@@ -269,7 +269,7 @@ function resetOffenderSearch() {
 
 function highlightText(text, searchTerm) {
   if (!searchTerm || !text) return text;
-  constQP = new RegExp(`(${searchTerm})`, 'gi');
+  const QP = new RegExp(`(${searchTerm})`, 'gi');
   return text.toString().replace(QP, '<mark>$1</mark>');
 }
 

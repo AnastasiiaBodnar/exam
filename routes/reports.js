@@ -3,16 +3,13 @@ const router = express.Router();
 const db = require('../db');
 const { Document, Packer, Paragraph, Table, TableCell, TableRow, WidthType, TextRun, AlignmentType, HeadingLevel } = require('docx');
 
-// ОДИН ЗАГАЛЬНИЙ ЗВІТ ПО ВСІХ ОФІЦЕРАХ
 router.get('/general-report', async (req, res) => {
   try {
-    // 1. Беремо всіх офіцерів
     const officersRes = await db.query('SELECT * FROM Officers ORDER BY LastName');
     const officers = officersRes.rows;
 
     const docChildren = [];
 
-    // Заголовок документа
     docChildren.push(new Paragraph({
       text: "ЗВІТ ПО ОСОБОВОМУ СКЛАДУ ТА ЗАТРИМАННЯХ",
       heading: HeadingLevel.TITLE,
@@ -20,30 +17,26 @@ router.get('/general-report', async (req, res) => {
       spacing: { after: 400 }
     }));
 
-    // 2. Проходимо по кожному офіцеру
     for (const officer of officers) {
       
-      // Шукаємо його затримання
       const detentionsRes = await db.query(`
         SELECT 
           d.*,
           off.LastName || ' ' || off.FirstName AS OffenderName
         FROM Detentions d
         JOIN Offenders off ON d.Offender_ID = off.Offender_ID
-        WHERE d.Officer_ID = $1
+        WHERE d.Officer_ID = ${officer.officer_id}
         ORDER BY d.DetentionDate DESC
-      `, [officer.officer_id]);
+      `);
       
       const detentions = detentionsRes.rows;
 
-      // Заголовок секції офіцера
       docChildren.push(new Paragraph({
         text: `${officer.lastname} ${officer.firstname} (${officer.rank || 'б/з'}, ${officer.position || 'б/п'})`,
         heading: HeadingLevel.HEADING_2,
         spacing: { before: 400, after: 100 }
       }));
 
-      // Кількість затримань
       docChildren.push(new Paragraph({
         children: [
           new TextRun({ text: "Всього затримань: ", bold: true }),
@@ -52,7 +45,6 @@ router.get('/general-report', async (req, res) => {
         spacing: { after: 200 }
       }));
 
-      // Якщо є затримання — малюємо таблицю
       if (detentions.length > 0) {
         const tableRows = [
           new TableRow({
@@ -90,11 +82,9 @@ router.get('/general-report', async (req, res) => {
         }));
       }
       
-      // Розділювач (порожній рядок)
       docChildren.push(new Paragraph({ text: "" }));
     }
 
-    // 3. Формуємо документ
     const doc = new Document({
       sections: [{
         properties: {},
@@ -104,7 +94,6 @@ router.get('/general-report', async (req, res) => {
 
     const buffer = await Packer.toBuffer(doc);
 
-    // ВІДПРАВЛЯЄМО (Ім'я файлу англійською, щоб не було помилки)
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
     res.setHeader('Content-Disposition', 'attachment; filename="Militia_Report.docx"');
     res.send(buffer);

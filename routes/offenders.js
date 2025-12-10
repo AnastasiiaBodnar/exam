@@ -20,12 +20,11 @@ router.get('/search', async (req, res) => {
       return res.status(400).json({ error: 'lastName parameter is required' });
     }
 
-    const result = await db.query(
-      `SELECT * FROM Offenders 
-       WHERE LOWER(LastName) LIKE LOWER($1)
-       ORDER BY LastName`,
-      [`%${lastName}%`]
-    );
+    const result = await db.query(`
+      SELECT * FROM Offenders 
+      WHERE LOWER(LastName) LIKE LOWER('%${lastName}%')
+      ORDER BY LastName
+    `);
     
     res.json(result.rows);
   } catch (err) {
