@@ -1,16 +1,19 @@
 {
   "name": "militia-exam",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "main.js",
   "scripts": {
+    "start": "electron .",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "electron": "^39.2.6",
+    "express": "^4.22.1",
     "pg": "^8.16.3"
   }
 }
