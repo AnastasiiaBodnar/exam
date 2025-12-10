@@ -7,7 +7,10 @@ let detentionsData = [];
 let searchMatches = [];
 let currentSearchIndex = -1;
 
-function showSection(sectionName) {
+let currentOfficerId = null;
+let currentOffenderId = null;
+
+function showSection(sectionName, element) {
   document.querySelectorAll('.content-section').forEach(section => {
     section.classList.add('d-none');
   });
@@ -17,7 +20,10 @@ function showSection(sectionName) {
   document.querySelectorAll('.nav-link').forEach(link => {
     link.classList.remove('active');
   });
-  event.target.classList.add('active');
+  
+  if (element) {
+    element.classList.add('active');
+  }
   
   switch(sectionName) {
     case 'officers':
@@ -29,13 +35,8 @@ function showSection(sectionName) {
     case 'detentions':
       loadDetentions();
       break;
-    case 'reports':
-      loadReportOfficers();
-      break;
   }
 }
-
-// --- OFFICERS ---
 
 async function loadOfficers(sortBy = 'LastName', sortOrder = 'ASC') {
   try {
@@ -43,8 +44,7 @@ async function loadOfficers(sortBy = 'LastName', sortOrder = 'ASC') {
     officersData = await response.json();
     displayOfficers(officersData);
   } catch (error) {
-    console.error('Error loading officers:', error);
-    alert('Помилка завантаження офіцерів');
+    console.error(error);
   }
 }
 
@@ -90,60 +90,29 @@ function sortOfficers(field) {
 }
 
 function openOfficerModal(officerId = null) {
-  const isEdit = officerId !== null;
-  let formData = { lastname: '', firstname: '', patronymic: '', rank: '', position: '' };
+  currentOfficerId = officerId;
+  const modalEl = document.getElementById('officerModal');
+  const modal = new bootstrap.Modal(modalEl);
   
-  if (isEdit) {
+  document.getElementById('officerModalLabel').textContent = officerId ? 'Редагувати офіцера' : 'Додати офіцера';
+  
+  if (officerId) {
     const officer = officersData.find(o => o.officer_id === officerId);
-    if (officer) formData = officer;
+    if (officer) {
+        document.getElementById('lastName').value = officer.lastname;
+        document.getElementById('firstName').value = officer.firstname;
+        document.getElementById('patronymic').value = officer.patronymic || '';
+        document.getElementById('rank').value = officer.rank || '';
+        document.getElementById('position').value = officer.position || '';
+    }
+  } else {
+    document.getElementById('officerForm').reset();
   }
   
-  document.getElementById('modals-container').innerHTML = `
-    <div class="modal fade" id="officerModal" tabindex="-1">
-      <div class="modal-dialog">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">${isEdit ? 'Редагувати офіцера' : 'Додати офіцера'}</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-          </div>
-          <div class="modal-body">
-            <form id="officerForm">
-              <div class="mb-3">
-                <label class="form-label">Прізвище *</label>
-                <input type="text" class="form-control" id="lastName" value="${formData.lastname || ''}" required>
-              </div>
-              <div class="mb-3">
-                <label class="form-label">Ім'я *</label>
-                <input type="text" class="form-control" id="firstName" value="${formData.firstname || ''}" required>
-              </div>
-              <div class="mb-3">
-                <label class="form-label">По-батькові</label>
-                <input type="text" class="form-control" id="patronymic" value="${formData.patronymic || ''}">
-              </div>
-              <div class="mb-3">
-                <label class="form-label">Звання</label>
-                <input type="text" class="form-control" id="rank" value="${formData.rank || ''}">
-              </div>
-              <div class="mb-3">
-                <label class="form-label">Посада</label>
-                <input type="text" class="form-control" id="position" value="${formData.position || ''}">
-              </div>
-            </form>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Скасувати</button>
-            <button type="button" class="btn btn-primary" onclick="saveOfficer(${isEdit ? officerId : null})">
-              Зберегти
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>`;
-  
-  new bootstrap.Modal(document.getElementById('officerModal')).show();
+  modal.show();
 }
 
-async function saveOfficer(officerId) {
+async function saveOfficer() {
   const form = document.getElementById('officerForm');
   if (!form.checkValidity()) {
     form.classList.add('was-validated');
@@ -159,51 +128,44 @@ async function saveOfficer(officerId) {
   };
   
   try {
-    const url = officerId ? `${API_URL}/officers/${officerId}` : `${API_URL}/officers`;
+    const url = currentOfficerId ? `${API_URL}/officers/${currentOfficerId}` : `${API_URL}/officers`;
     const response = await fetch(url, {
-      method: officerId ? 'PUT' : 'POST',
+      method: currentOfficerId ? 'PUT' : 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(formData)
     });
     
     if (response.ok) {
-      alert(officerId ? 'Офіцера оновлено' : 'Офіцера додано');
-      bootstrap.Modal.getInstance(document.getElementById('officerModal')).hide();
+      const modalEl = document.getElementById('officerModal');
+      const modal = bootstrap.Modal.getInstance(modalEl);
+      modal.hide();
+      
+      alert(currentOfficerId ? 'Офіцера оновлено' : 'Офіцера додано');
       loadOfficers();
     } else {
       const data = await response.json();
       alert('Помилка: ' + data.error);
     }
   } catch (error) {
-    console.error('Error:', error);
+    console.error(error);
     alert('Помилка збереження');
   }
 }
 
-function editOfficer(officerId) {
-  openOfficerModal(officerId);
+function editOfficer(id) {
+  openOfficerModal(id);
 }
 
-async function deleteOfficer(officerId) {
-  if (!confirm('Ви впевнені, що хочете видалити цього офіцера?')) return;
-  
+async function deleteOfficer(id) {
+  if (!confirm('Видалити офіцера?')) return;
   try {
-    const response = await fetch(`${API_URL}/officers/${officerId}`, { method: 'DELETE' });
-    
-    if (response.ok) {
-      alert('Офіцера видалено');
-      loadOfficers();
-    } else {
-      const data = await response.json();
-      alert('Помилка: ' + data.error);
-    }
-  } catch (error) {
-    console.error('Error:', error);
-    alert('Помилка видалення');
+    const res = await fetch(`${API_URL}/officers/${id}`, { method: 'DELETE' });
+    if (res.ok) loadOfficers();
+    else alert('Помилка видалення');
+  } catch (e) {
+    console.error(e);
   }
 }
-
-// --- OFFENDERS ---
 
 async function loadOffenders() {
   currentSearchIndex = -1;
@@ -218,8 +180,7 @@ async function loadOffenders() {
     offendersData = await response.json();
     displayOffenders(offendersData);
   } catch (error) {
-    console.error('Error loading offenders:', error);
-    alert('Помилка завантаження порушників');
+    console.error(error);
   }
 }
 
@@ -272,7 +233,6 @@ function displayOffenders(offenders) {
 
 async function searchOffenders() {
   const searchTerm = document.getElementById('searchOffender').value.trim();
-  
   currentSearchIndex = -1;
   searchMatches = [];
   
@@ -284,7 +244,6 @@ async function searchOffenders() {
   try {
     const response = await fetch(`${API_URL}/offenders/search?lastName=${encodeURIComponent(searchTerm)}`);
     const results = await response.json();
-    
     offendersData = results;
     displayOffenders(results);
 
@@ -299,9 +258,8 @@ async function searchOffenders() {
         displayOffenders(results);
         scrollToSearchResult(0);
     }
-
   } catch (error) {
-    console.error('Error:', error);
+    console.error(error);
   }
 }
 
@@ -311,101 +269,54 @@ function resetOffenderSearch() {
 
 function highlightText(text, searchTerm) {
   if (!searchTerm || !text) return text;
-  const regex = new RegExp(`(${searchTerm})`, 'gi');
-  return text.toString().replace(regex, '<mark>$1</mark>');
+  constQP = new RegExp(`(${searchTerm})`, 'gi');
+  return text.toString().replace(QP, '<mark>$1</mark>');
 }
 
 function navigateSearch(direction) {
   if (searchMatches.length === 0) return;
-
   currentSearchIndex += direction;
-
-  if (currentSearchIndex >= searchMatches.length) {
-    currentSearchIndex = 0;
-  } else if (currentSearchIndex < 0) {
-    currentSearchIndex = searchMatches.length - 1;
-  }
-
+  if (currentSearchIndex >= searchMatches.length) currentSearchIndex = 0;
+  else if (currentSearchIndex < 0) currentSearchIndex = searchMatches.length - 1;
   updateSearchCounter(currentSearchIndex + 1, searchMatches.length);
-  
   displayOffenders(offendersData);
   scrollToSearchResult(currentSearchIndex);
 }
 
 function scrollToSearchResult(index) {
   const element = document.getElementById(`search-match-${index}`);
-  if (element) {
-    element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  }
+  if (element) element.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
 function updateSearchCounter(current, total) {
   const counter = document.getElementById('searchCounter');
-  if (!counter) return;
+  if (counter) counter.textContent = total === 0 ? '' : `Результат ${current} з ${total}`;
+}
+
+function openOffenderModal(id = null) {
+  currentOffenderId = id;
+  const modalEl = document.getElementById('offenderModal');
+  const modal = new bootstrap.Modal(modalEl);
   
-  if (total === 0) {
-    counter.textContent = '';
+  document.getElementById('offenderModalLabel').textContent = id ? 'Редагувати порушника' : 'Додати порушника';
+  
+  if (id) {
+    const offender = offendersData.find(o => o.offender_id === id);
+    if (offender) {
+      document.getElementById('offLastName').value = offender.lastname;
+      document.getElementById('offFirstName').value = offender.firstname;
+      document.getElementById('offPatronymic').value = offender.patronymic || '';
+      document.getElementById('offAddress').value = offender.address || '';
+      document.getElementById('offWorkplace').value = offender.workplace || '';
+    }
   } else {
-    counter.textContent = `Результат ${current} з ${total}`;
-  }
-}
-
-
-function openOffenderModal(offenderId = null) {
-  const isEdit = offenderId !== null;
-  let formData = { lastname: '', firstname: '', patronymic: '', address: '', workplace: '' };
-  
-  if (isEdit) {
-    const offender = offendersData.find(o => o.offender_id === offenderId);
-    if (offender) formData = offender;
+    document.getElementById('offenderForm').reset();
   }
   
-  document.getElementById('modals-container').innerHTML = `
-    <div class="modal fade" id="offenderModal" tabindex="-1">
-      <div class="modal-dialog">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">${isEdit ? 'Редагувати порушника' : 'Додати порушника'}</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-          </div>
-          <div class="modal-body">
-            <form id="offenderForm">
-              <div class="mb-3">
-                <label class="form-label">Прізвище *</label>
-                <input type="text" class="form-control" id="offLastName" value="${formData.lastname || ''}" required>
-              </div>
-              <div class="mb-3">
-                <label class="form-label">Ім'я *</label>
-                <input type="text" class="form-control" id="offFirstName" value="${formData.firstname || ''}" required>
-              </div>
-              <div class="mb-3">
-                <label class="form-label">По-батькові</label>
-                <input type="text" class="form-control" id="offPatronymic" value="${formData.patronymic || ''}">
-              </div>
-              <div class="mb-3">
-                <label class="form-label">Адреса</label>
-                <textarea class="form-control" id="offAddress">${formData.address || ''}</textarea>
-              </div>
-              <div class="mb-3">
-                <label class="form-label">Місце роботи</label>
-                <input type="text" class="form-control" id="offWorkplace" value="${formData.workplace || ''}">
-              </div>
-            </form>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Скасувати</button>
-            <button type="button" class="btn btn-primary" onclick="saveOffender(${isEdit ? offenderId : null})">
-              Зберегти
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>`;
-  
-  new bootstrap.Modal(document.getElementById('offenderModal')).show();
+  modal.show();
 }
 
-async function saveOffender(offenderId) {
+async function saveOffender() {
   const form = document.getElementById('offenderForm');
   if (!form.checkValidity()) {
     form.classList.add('was-validated');
@@ -421,51 +332,42 @@ async function saveOffender(offenderId) {
   };
   
   try {
-    const url = offenderId ? `${API_URL}/offenders/${offenderId}` : `${API_URL}/offenders`;
+    const url = currentOffenderId ? `${API_URL}/offenders/${currentOffenderId}` : `${API_URL}/offenders`;
     const response = await fetch(url, {
-      method: offenderId ? 'PUT' : 'POST',
+      method: currentOffenderId ? 'PUT' : 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(formData)
     });
     
     if (response.ok) {
-      alert(offenderId ? 'Порушника оновлено' : 'Порушника додано');
-      bootstrap.Modal.getInstance(document.getElementById('offenderModal')).hide();
+      const modal = bootstrap.Modal.getInstance(document.getElementById('offenderModal'));
+      modal.hide();
+      alert(currentOffenderId ? 'Порушника оновлено' : 'Порушника додано');
       loadOffenders();
     } else {
       const data = await response.json();
       alert('Помилка: ' + data.error);
     }
   } catch (error) {
-    console.error('Error:', error);
+    console.error(error);
     alert('Помилка збереження');
   }
 }
 
-function editOffender(offenderId) {
-  openOffenderModal(offenderId);
+function editOffender(id) {
+  openOffenderModal(id);
 }
 
-async function deleteOffender(offenderId) {
-  if (!confirm('Ви впевнені, що хочете видалити цього порушника?')) return;
-  
+async function deleteOffender(id) {
+  if (!confirm('Видалити порушника?')) return;
   try {
-    const response = await fetch(`${API_URL}/offenders/${offenderId}`, { method: 'DELETE' });
-    
-    if (response.ok) {
-      alert('Порушника видалено');
-      loadOffenders();
-    } else {
-      const data = await response.json();
-      alert('Помилка: ' + data.error);
-    }
-  } catch (error) {
-    console.error('Error:', error);
-    alert('Помилка видалення');
+    const res = await fetch(`${API_URL}/offenders/${id}`, { method: 'DELETE' });
+    if (res.ok) loadOffenders();
+    else alert('Помилка видалення');
+  } catch (e) {
+    console.error(e);
   }
 }
-
-// --- DETENTIONS ---
 
 async function loadDetentions() {
   try {
@@ -473,19 +375,16 @@ async function loadDetentions() {
     detentionsData = await response.json();
     displayDetentions(detentionsData);
   } catch (error) {
-    console.error('Error loading detentions:', error);
-    alert('Помилка завантаження затримань');
+    console.error(error);
   }
 }
 
 function displayDetentions(detentions) {
   const tbody = document.getElementById('detentions-table');
-  
   if (detentions.length === 0) {
     tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">Затримань немає</td></tr>';
     return;
   }
-  
   tbody.innerHTML = detentions.map(detention => `
     <tr>
       <td>${detention.detention_id}</td>
@@ -509,7 +408,7 @@ async function filterDetentions() {
   const endDate = document.getElementById('endDate').value;
   
   if (!startDate || !endDate) {
-    alert('Будь ласка, вкажіть обидві дати!');
+    alert('Вкажіть обидві дати');
     return;
   }
   
@@ -518,71 +417,41 @@ async function filterDetentions() {
     const results = await response.json();
     displayDetentions(results);
   } catch (error) {
-    console.error('Error:', error);
+    console.error(error);
     alert('Помилка фільтрації');
   }
 }
 
 async function openDetentionModal() {
-  const officersResponse = await fetch(`${API_URL}/officers`);
-  const officers = await officersResponse.json();
+  const modalEl = document.getElementById('detentionModal');
+  const modal = new bootstrap.Modal(modalEl);
   
-  const offendersResponse = await fetch(`${API_URL}/offenders`);
-  const offenders = await offendersResponse.json();
+  document.getElementById('detentionForm').reset();
   
-  document.getElementById('modals-container').innerHTML = `
-    <div class="modal fade" id="detentionModal" tabindex="-1">
-      <div class="modal-dialog">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">Додати затримання</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-          </div>
-          <div class="modal-body">
-            <form id="detentionForm">
-              <div class="mb-3">
-                <label class="form-label">Офіцер *</label>
-                <select class="form-select" id="detOfficerId" required>
-                  <option value="">Оберіть офіцера...</option>
-                  ${officers.map(o => `<option value="${o.officer_id}">${o.lastname} ${o.firstname}</option>`).join('')}
-                </select>
-              </div>
-              <div class="mb-3">
-                <label class="form-label">Порушник *</label>
-                <select class="form-select" id="detOffenderId" required>
-                  <option value="">Оберіть порушника...</option>
-                  ${offenders.map(o => `<option value="${o.offender_id}">${o.lastname} ${o.firstname}</option>`).join('')}
-                </select>
-              </div>
-              <div class="mb-3">
-                <label class="form-label">Дата затримання *</label>
-                <input type="date" class="form-control" id="detDate" max="${new Date().toISOString().split('T')[0]}" required>
-              </div>
-              <div class="mb-3">
-                <label class="form-label">№ Протоколу *</label>
-                <input type="text" class="form-control" id="detProtocol" required>
-              </div>
-              <div class="mb-3">
-                <label class="form-label">№ Паспорту</label>
-                <input type="text" class="form-control" id="detPassport">
-              </div>
-              <div class="mb-3">
-                <label class="form-label">Тип порушення *</label>
-                <textarea class="form-control" id="detViolation" required></textarea>
-              </div>
-            </form>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Скасувати</button>
-            <button type="button" class="btn btn-primary" onclick="saveDetention()">
-              Зберегти
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>`;
-  
-  new bootstrap.Modal(document.getElementById('detentionModal')).show();
+  try {
+    const [officersRes, offendersRes] = await Promise.all([
+      fetch(`${API_URL}/officers`),
+      fetch(`${API_URL}/offenders`)
+    ]);
+    
+    const officers = await officersRes.json();
+    const offenders = await offendersRes.json();
+    
+    const offSelect = document.getElementById('detOfficerId');
+    offSelect.innerHTML = '<option value="">Оберіть офіцера...</option>' + 
+      officers.map(o => `<option value="${o.officer_id}">${o.lastname} ${o.firstname}</option>`).join('');
+      
+    const offendSelect = document.getElementById('detOffenderId');
+    offendSelect.innerHTML = '<option value="">Оберіть порушника...</option>' + 
+      offenders.map(o => `<option value="${o.offender_id}">${o.lastname} ${o.firstname}</option>`).join('');
+      
+    document.getElementById('detDate').max = new Date().toISOString().split('T')[0];
+    
+    modal.show();
+  } catch (e) {
+    console.error(e);
+    alert('Помилка завантаження списків');
+  }
 }
 
 async function saveDetention() {
@@ -609,65 +478,35 @@ async function saveDetention() {
     });
     
     if (response.ok) {
+      const modal = bootstrap.Modal.getInstance(document.getElementById('detentionModal'));
+      modal.hide();
       alert('Затримання додано');
-      bootstrap.Modal.getInstance(document.getElementById('detentionModal')).hide();
       loadDetentions();
     } else {
       const data = await response.json();
       alert('Помилка: ' + data.error);
     }
   } catch (error) {
-    console.error('Error:', error);
+    console.error(error);
     alert('Помилка збереження');
   }
 }
 
-async function deleteDetention(detentionId) {
-  if (!confirm('Ви впевнені, що хочете видалити це затримання?')) return;
-  
+async function deleteDetention(id) {
+  if (!confirm('Видалити затримання?')) return;
   try {
-    const response = await fetch(`${API_URL}/detentions/${detentionId}`, { method: 'DELETE' });
-    
-    if (response.ok) {
-      alert('Затримання видалено');
-      loadDetentions();
-    } else {
-      const data = await response.json();
-      alert('Помилка: ' + data.error);
-    }
-  } catch (error) {
-    console.error('Error:', error);
-    alert('Помилка видалення');
+    const res = await fetch(`${API_URL}/detentions/${id}`, { method: 'DELETE' });
+    if (res.ok) loadDetentions();
+    else alert('Помилка видалення');
+  } catch (e) {
+    console.error(e);
   }
 }
 
-// --- REPORTS ---
-
-async function loadReportOfficers() {
-  try {
-    const response = await fetch(`${API_URL}/officers`);
-    const officers = await response.json();
-    
-    const select = document.getElementById('reportOfficerId');
-    select.innerHTML = '<option value="">Оберіть офіцера...</option>' +
-      officers.map(o => `<option value="${o.officer_id}">${o.lastname} ${o.firstname} - ${o.position || 'Немає посади'}</option>`).join('');
-  } catch (error) {
-    console.error('Error:', error);
-  }
+function downloadGeneralReport() {
+  window.location.href = `${API_URL}/reports/general-report`;
 }
 
-function generateOfficerReport() {
-  const officerId = document.getElementById('reportOfficerId').value;
-  if (!officerId) {
-    alert('Оберіть офіцера!');
-    return;
-  }
-  
-  // Пряме завантаження файлу
-  window.location.href = `${API_URL}/reports/officer-detentions/download/${officerId}`;
-}
-
-// Ініціалізація
 document.addEventListener('DOMContentLoaded', () => {
   loadOfficers();
 });
