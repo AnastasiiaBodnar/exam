@@ -35,6 +35,8 @@ function showSection(sectionName) {
   }
 }
 
+// --- OFFICERS ---
+
 async function loadOfficers(sortBy = 'LastName', sortOrder = 'ASC') {
   try {
     const response = await fetch(`${API_URL}/officers?sortBy=${sortBy}&sortOrder=${sortOrder}`);
@@ -200,6 +202,8 @@ async function deleteOfficer(officerId) {
     alert('Помилка видалення');
   }
 }
+
+// --- OFFENDERS ---
 
 async function loadOffenders() {
   currentSearchIndex = -1;
@@ -461,6 +465,8 @@ async function deleteOffender(offenderId) {
   }
 }
 
+// --- DETENTIONS ---
+
 async function loadDetentions() {
   try {
     const response = await fetch(`${API_URL}/detentions`);
@@ -635,6 +641,8 @@ async function deleteDetention(detentionId) {
   }
 }
 
+// --- REPORTS ---
+
 async function loadReportOfficers() {
   try {
     const response = await fetch(`${API_URL}/officers`);
@@ -648,94 +656,18 @@ async function loadReportOfficers() {
   }
 }
 
-async function generateOfficerReport() {
+function generateOfficerReport() {
   const officerId = document.getElementById('reportOfficerId').value;
   if (!officerId) {
     alert('Оберіть офіцера!');
     return;
   }
   
-  try {
-    const response = await fetch(`${API_URL}/reports/officer-detentions/${officerId}`);
-    const data = await response.json();
-    
-    const resultDiv = document.getElementById('officerReportResult');
-    
-    if (data.detentions.length === 0) {
-      resultDiv.innerHTML = '<div class="alert alert-info">Затримань не знайдено</div>';
-      return;
-    }
-    
-    let html = `
-      <div class="alert alert-success">
-        <h5>Офіцер: ${data.officer.lastname} ${data.officer.firstname}</h5>
-        <p><strong>Посада:</strong> ${data.officer.position || '-'}</p>
-        <p><strong>Загальна кількість затримань:</strong> ${data.totalCount}</p>
-      </div>
-      <table class="table table-striped">
-        <thead>
-          <tr>
-            <th>Дата</th>
-            <th>Порушник</th>
-            <th>№ Протоколу</th>
-            <th>Тип порушення</th>
-          </tr>
-        </thead>
-        <tbody>`;
-    
-    data.detentions.forEach(det => {
-      html += `
-        <tr>
-          <td>${new Date(det.detentiondate).toLocaleDateString('uk-UA')}</td>
-          <td>${det.offendername}</td>
-          <td>${det.protocolnumber}</td>
-          <td>${det.violationtype}</td>
-        </tr>`;
-    });
-    
-    html += '</tbody></table>';
-    resultDiv.innerHTML = html;
-  } catch (error) {
-    console.error('Error:', error);
-    alert('Помилка формування звіту');
-  }
+  // Пряме завантаження файлу
+  window.location.href = `${API_URL}/reports/officer-detentions/download/${officerId}`;
 }
 
-async function queryViolationCount() {
-  const lastName = document.getElementById('queryOffenderLastName').value.trim();
-  if (!lastName) {
-    alert('Введіть прізвище порушника!');
-    return;
-  }
-  
-  try {
-    const response = await fetch(`${API_URL}/reports/offender-violations?lastName=${encodeURIComponent(lastName)}`);
-    
-    if (!response.ok) {
-      const error = await response.json();
-      alert(error.error);
-      return;
-    }
-    
-    const data = await response.json();
-    
-    const resultDiv = document.getElementById('violationCountResult');
-    resultDiv.innerHTML = `
-      <div class="alert alert-warning">
-        <h5>${data.lastname} ${data.firstname} ${data.patronymic || ''}</h5>
-        <p><strong>Адреса:</strong> ${data.address || 'Немає даних'}</p>
-        <p><strong>Місце роботи:</strong> ${data.workplace || 'Немає даних'}</p>
-        <p style="font-size: 24px; color: #dc3545; font-weight: bold; margin-top: 10px;">
-          Кількість правопорушень: ${data.violationcount}
-        </p>
-      </div>
-    `;
-  } catch (error) {
-    console.error('Error:', error);
-    alert('Помилка виконання запиту');
-  }
-}
-
+// Ініціалізація
 document.addEventListener('DOMContentLoaded', () => {
   loadOfficers();
 });
