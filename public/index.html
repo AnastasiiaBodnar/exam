@@ -80,7 +80,7 @@
       </div>
     </div>
 
-    <div id="offenders-section" class="content-section d-none">
+<div id="offenders-section" class="content-section d-none">
       <div class="d-flex justify-content-between align-items-center mb-3">
         <h2><i class="bi bi-person-x"></i> Порушники</h2>
         <button class="btn btn-primary" onclick="openOffenderModal()">
@@ -91,6 +91,7 @@
       <div class="card mb-3">
         <div class="card-body">
           <div class="row g-3">
+            
             <div class="col-md-6">
               <div class="input-group">
                 <input type="text" class="form-control" id="searchOffender" 
@@ -110,6 +111,17 @@
               </div>
               <small class="text-muted" id="searchCounter"></small>
             </div>
+
+            <div class="col-md-6">
+              <div class="input-group">
+                <span class="input-group-text bg-light"><i class="bi bi-calculator"></i></span>
+                <select id="offenderSelect" class="form-select" onchange="showViolationsCount()">
+                  <option value="">Оберіть порушника для підрахунку...</option>
+                </select>
+              </div>
+              <div id="violationsResult" class="mt-2"></div>
+            </div>
+
           </div>
         </div>
       </div>
@@ -131,7 +143,6 @@
         </table>
       </div>
     </div>
-
     <div id="detentions-section" class="content-section d-none">
       <div class="d-flex justify-content-between align-items-center mb-3">
         <h2><i class="bi bi-file-earmark-text"></i> Затримання</h2>

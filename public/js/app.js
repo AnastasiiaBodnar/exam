@@ -38,6 +38,8 @@ function showSection(sectionName, element) {
   }
 }
 
+// ================= OFFICERS =================
+
 async function loadOfficers(sortBy = 'LastName', sortOrder = 'ASC') {
   try {
     const response = await fetch(`${API_URL}/officers?sortBy=${sortBy}&sortOrder=${sortOrder}`);
@@ -167,30 +169,41 @@ async function deleteOfficer(id) {
   }
 }
 
+// ================= OFFENDERS =================
+
 async function loadOffenders() {
   currentSearchIndex = -1;
   searchMatches = [];
   updateSearchCounter(0, 0);
-  document.getElementById('searchOffender').value = '';
-  document.getElementById('prevSearchBtn').disabled = true;
-  document.getElementById('nextSearchBtn').disabled = true;
+  const searchInput = document.getElementById('searchOffender');
+  if (searchInput) searchInput.value = '';
+  const prevBtn = document.getElementById('prevSearchBtn');
+  if (prevBtn) prevBtn.disabled = true;
+  const nextBtn = document.getElementById('nextSearchBtn');
+  if (nextBtn) nextBtn.disabled = true;
 
   try {
     const response = await fetch(`${API_URL}/offenders`);
     offendersData = await response.json();
     displayOffenders(offendersData);
-    populateOffenderSelect();
+    populateOffenderSelect(); // Оновлюємо випадаючий список
   } catch (error) {
     console.error(error);
   }
 }
 
+// Оновлена функція заповнення списку
 function populateOffenderSelect() {
   const select = document.getElementById('offenderSelect');
-  select.innerHTML = '<option value="">Оберіть порушника для перегляду кількості порушень...</option>' +
-    offendersData.map(o => `<option value="${o.offender_id}">${o.lastname} ${o.firstname}</option>`).join('');
+  if (!select) return;
+  
+  select.innerHTML = '<option value="">Оберіть порушника для підрахунку...</option>' +
+    offendersData.map(o => 
+      `<option value="${o.offender_id}">${o.lastname} ${o.firstname} (${o.patronymic || '-'})</option>`
+    ).join('');
 }
 
+// Нова функція для показу кількості порушень
 async function showViolationsCount() {
   const select = document.getElementById('offenderSelect');
   const offenderId = select.value;
@@ -203,24 +216,45 @@ async function showViolationsCount() {
   
   try {
     const response = await fetch(`${API_URL}/offenders/violations-count/${offenderId}`);
+    
+    if (!response.ok) throw new Error('Помилка мережі');
+    
     const data = await response.json();
     
+    const suffix = data.violations_count === 1 ? 'порушення' : 'порушень';
+    
+    // Логіка кольорів: зелений (0), жовтий (1-2), червоний (3+)
+    let alertClass = 'alert-success';
+    let iconClass = 'bi-check-circle-fill';
+    
+    if (data.violations_count > 0) {
+        alertClass = 'alert-warning';
+        iconClass = 'bi-exclamation-circle-fill';
+    }
+    if (data.violations_count > 2) {
+        alertClass = 'alert-danger';
+        iconClass = 'bi-exclamation-triangle-fill';
+    }
+
     resultDiv.innerHTML = `
-      <div class="alert alert-info">
-        <strong>${data.offender.lastname} ${data.offender.firstname}</strong> має 
-        <strong class="text-danger">${data.violations_count}</strong> 
-        ${data.violations_count === 1 ? 'порушення' : 'порушень'}
+      <div class="alert ${alertClass} d-flex align-items-center mb-0" role="alert">
+        <i class="bi ${iconClass} me-2"></i>
+        <div>
+          <strong>${data.offender.lastname} ${data.offender.firstname}</strong>: 
+          зафіксовано <strong>${data.violations_count}</strong> ${suffix}.
+        </div>
       </div>
     `;
   } catch (error) {
     console.error(error);
-    resultDiv.innerHTML = '<div class="alert alert-danger">Помилка завантаження даних</div>';
+    resultDiv.innerHTML = '<div class="alert alert-danger">Не вдалося завантажити дані</div>';
   }
 }
 
 function displayOffenders(offenders) {
   const tbody = document.getElementById('offenders-table');
-  const searchTerm = document.getElementById('searchOffender')?.value.trim().toLowerCase() || '';
+  const searchTermInput = document.getElementById('searchOffender');
+  const searchTerm = searchTermInput ? searchTermInput.value.trim().toLowerCase() : '';
 
   searchMatches = [];
   
@@ -402,6 +436,8 @@ async function deleteOffender(id) {
     console.error(e);
   }
 }
+
+// ================= DETENTIONS =================
 
 async function loadDetentions() {
   try {
